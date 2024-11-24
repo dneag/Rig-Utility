@@ -34,7 +34,7 @@ def create_twist_joints(indices: list, *, current_suffix: str = None):
         cmds.error("Select a single joint.")
     
     # Before modifying the skeleton, move the info from indexMap to a regular list, converting the indices to the actual joint names
-    # paired with their children
+    # and pairing them with their children
     joints = []
     i = 0
     for jointIndex, positions in indexMap.items():
@@ -66,7 +66,6 @@ def create_twist_joints(indices: list, *, current_suffix: str = None):
         parentJoint = jointInfo[0][0]
         childJoint = jointInfo[0][1]
         positions = jointInfo[1]
-        twistJointBaseName = helpers.insertTextInName(parentJoint, "_twist", current_suffix)
-        helpers.createJointsBetweenJoints(twistJointBaseName, parentJoint, childJoint, positions)
+        helpers.createJointsBetweenJoints(parentJoint, childJoint, positions, "_twist", current_suffix)
     
     cmds.select(initialSelection)

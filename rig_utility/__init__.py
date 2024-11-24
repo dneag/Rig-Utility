@@ -1,1 +1,1 @@
-from .rig_utility import create_twist_joints
+from .rig_utility_funcs import create_twist_joints

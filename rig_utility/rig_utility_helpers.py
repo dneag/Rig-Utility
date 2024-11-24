@@ -45,24 +45,20 @@ def prepareIndexList(jointIndices: list):
 
     return dict(sorted(indexMap.items()))
 
-# Returns a new name with the text between the existing suffix and the rest of the current name of obj
-def insertTextInName(obj: str, text: str, currentSuffix: str):
+# Create joint(s) between pObj and cObj named as pObj with insertText inserted before currentSuffix.  The number of
+# joints created is len(pos) and their positions correspond to pos values
+def createJointsBetweenJoints(pObj: str, cObj: str, pos: list, insertText: str, currentSuffix: str):
 
     if currentSuffix is None:
         
-        suffixIndex = obj.rfind('_')
-        currentSuffix = obj[suffixIndex:] if suffixIndex != -1 else ''
+        suffixIndex = pObj.rfind('_')
+        currentSuffix = pObj[suffixIndex:] if suffixIndex != -1 else ''
     
-    elif not obj.endswith(currentSuffix):
+    elif not pObj.endswith(currentSuffix):
 
         cmds.error("suffix '" + currentSuffix + "' not found")
 
-    suffixIndex = obj.rfind(currentSuffix)
-
-    return obj[:suffixIndex] + text + obj[suffixIndex:]
-
-# Create joint(s) between pObj and cObj with the given name.  The number of joints created is len(pos) and their positions correspond to pos values
-def createJointsBetweenJoints(name: str, pObj: str, cObj: str, pos: list):
+    suffixIndex = pObj.rfind(currentSuffix)
 
     parentLocArray = cmds.xform(pObj, query=True, translation=True, worldSpace=True)
     childLocArray = cmds.xform(cObj, query=True, translation=True, worldSpace=True)
@@ -74,7 +70,8 @@ def createJointsBetweenJoints(name: str, pObj: str, cObj: str, pos: list):
         
         print("creating joint between " + pObj + " and " + cObj + " at " + str(int(pos[i] * 100)) + "% from " + pObj)
         loc = parentLoc + ((childLoc - parentLoc) * pos[i])
-        jointName = name if len(pos) == 1 else (name + str(i+1))
+        t = insertText if len(pos) == 1 else insertText + str(i+1)
+        jointName = pObj[:suffixIndex] + t + pObj[suffixIndex:]
         cmds.joint(n=jointName, p=loc, rad=pRadius)
         currentParent = cmds.listRelatives(jointName, parent=True)[0]
         if currentParent != pObj:
