@@ -27,7 +27,7 @@ def create_twist_joints(indices: list, *, current_suffix: str = None):
     """
 
     indexMap = helpers.prepareIndexList(indices)
-    
+
     initialSelection = nextJoint = cmds.ls(sl=True)
 
     if len(nextJoint) != 1 or cmds.objectType(nextJoint[0]) != 'joint':
@@ -46,7 +46,7 @@ def create_twist_joints(indices: list, *, current_suffix: str = None):
             nextJoint = cmds.listRelatives(parentJoint, c=True)
 
             if nextJoint is None or len(nextJoint) != 1:
-
+    
                 nextJoint = parentJoint # This will cause a break from the outer loop as well
                 break
 
@@ -57,6 +57,10 @@ def create_twist_joints(indices: list, *, current_suffix: str = None):
 
         # Terminate if the limb ends or branches
         if children is None or len(children) != 1:
+
+            if children is not None and i == jointIndex and positions[0] == 0.:
+                joints.append([[nextJoint, children[0]], [positions[0]]])
+
             break
         
         joints.append([[nextJoint, children[0]], positions])
@@ -69,3 +73,35 @@ def create_twist_joints(indices: list, *, current_suffix: str = None):
         helpers.createJointsBetweenJoints(parentJoint, childJoint, positions, "_twist", current_suffix)
     
     cmds.select(initialSelection)
+
+def set_rotate_order(order):
+    """
+    Sets rotation order of selected joints and all their descendant joints.
+
+    Params:
+
+        order (str or int): The desired rotation order to apply to the selected joints.  If string, must be one of the 
+                            available orders ('xyz', 'yzx', etc).  If int, must be the index of one of the available orders (0-5). 
+    """
+
+    availableOrders = {'xyz':0,'yzx':1,'zxy':2,'xzy':3,'yxz':4,'zyx':5}
+    if isinstance(order, str) and order.lower() in availableOrders:
+        index = availableOrders[order.lower()]
+    elif isinstance(order, int) and order >= 0 and order <= 5:
+        index = order
+    else:
+        cmds.error("Invalid order")
+
+    selectedJoints = cmds.ls(sl=True, type='joint', l=True)
+
+    all = selectedJoints[:]
+
+    for j in selectedJoints:
+        
+        descendants = cmds.listRelatives(j, type='joint', f=True, ad=True)
+        if descendants is not None:
+            all.extend(descendants)
+    
+    for j in all:
+
+        cmds.setAttr(j + '.rotateOrder', index)
