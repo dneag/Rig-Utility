@@ -76,3 +76,45 @@ def createJointsBetweenJoints(pObj: str, cObj: str, pos: list, insertText: str, 
         currentParent = cmds.listRelatives(jointName, parent=True)[0]
         if currentParent != pObj:
             cmds.parent(jointName,pObj)
+
+def validateArgsForCleanOpp(space, axis, axes, center_threshold, neg_suffix, pos_suffix, skin_cluster):
+
+    if space.lower() != 'world' and space.lower() != 'object':
+        cmds.error("First argument must be 'world' or 'object'")
+    elif axis.lower() not in axes:
+        cmds.error("Second argument must specify 'x', 'y', or 'z'")
+
+    mesh = cmds.ls(selection=True)[0] if cmds.ls(selection=True) else None
+    if not mesh:
+        cmds.error("Select a skinned mesh")
+    
+    if (neg_suffix and not pos_suffix) or (pos_suffix and not neg_suffix):
+        cmds.error("If using a suffix, it must be specified for both negative and positive")
+
+    if center_threshold < 0.:
+        cmds.error("Center margin must be >= 0.")
+
+    skin_clusters = cmds.ls(cmds.listHistory(mesh), type='skinCluster')
+    if not skin_clusters:
+        cmds.error("Select a skinned mesh")
+    elif skin_cluster:
+        if skin_cluster not in skin_clusters:
+            cmds.error(skin_cluster + " not found in mesh history")
+        else:
+            skin_clusters = [skin_cluster]
+    
+    return mesh, skin_clusters
+
+# Check that each suffix exists on at least one string in the list.
+# Note that this assumes the strings will never end with more than one suffix 
+def suffixesAreInStrings(suffixes: list, strings: list) -> bool:
+
+    for s in strings:
+        for sf in suffixes:
+            if s.endswith(sf):
+                suffixes.remove(sf)
+                break
+        if len(suffixes) == 0:
+            break
+
+    return len(suffixes) == 0

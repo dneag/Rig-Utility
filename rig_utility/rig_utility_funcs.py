@@ -105,3 +105,70 @@ def set_rotate_order(order):
     for j in all:
 
         cmds.setAttr(j + '.rotateOrder', index)
+
+def clean_opposite_influences(space: str, axis: str, center_threshold: float = .01, skin_cluster: str = None,
+                          neg_suffix: str = None, pos_suffix: str = None):
+    """
+    Examines the influences on each vertex on the selected mesh and sets them to 0 if they are found to be
+    on the opposite side of the mesh from their influenced vertex.  By default, this applies to all skin clusters
+    on the mesh.  If your mesh has multiple clusters and you only want to apply it to one, set the skin_cluster
+    argument with the desired cluster name.  Also by default, joints' translations are used to determine which side
+    of the axis they are on.  Alternitavely, you can provide suffixes to indicate sides, i.e., '_l' for pos_suffix
+    and '_r' for neg_suffix.
+
+    Params:
+
+        Positional:
+
+            space (str): Either 'world' or 'object'.  Indicates whether to consider the axis in world or object space
+
+            axis (str): 'x', 'y', or 'z'.
+
+        Optional:
+
+            center_threshold (float): The range from 0 where vertices and influences will not be considered.
+
+            skin_cluster (str): The skin cluster to adjust influences on.
+
+            neg_suffix (str): The suffix of joints on the negative side of the axis to be considered
+
+            pos_suffix (str): The suffix of joints on the positive side of the axis to be considered
+    """
+
+    axes = { 'x': 0, 'y': 1, 'z': 2 }
+    mesh, skin_clusters = helpers.validateArgsForCleanOpp(space, axis, axes, center_threshold, neg_suffix, pos_suffix, skin_cluster)
+    axis = axes[axis.lower()]
+    ws = False if space == 'object' else True
+
+    for sc in skin_clusters:
+
+        influences = cmds.skinCluster(sc, query=True, influence=True)
+        if neg_suffix:
+            # Ensure that the suffixes exist on at least one influence
+            if not helpers.suffixesAreInStrings([neg_suffix, pos_suffix], influences):
+                cmds.error("One or both of the specified suffixes were not found on any influences")
+
+        vertices = cmds.ls(f"{mesh}.vtx[*]", flatten=True)
+        for v in vertices:
+
+            vertexAxisValue = cmds.pointPosition(v, world=ws)[axis]
+            if vertexAxisValue < center_threshold and vertexAxisValue > -center_threshold:
+                continue
+            vertexAxisValueIsPositive = cmds.pointPosition(v, world=ws)[axis] > 0.
+            weights = cmds.skinPercent(sc, v, query=True, value=True)
+            badInfluences = []
+
+            for j, w in zip(influences, weights):
+                if w > 0.:
+
+                    if neg_suffix:
+                        if ((j.endswith(neg_suffix) and vertexAxisValueIsPositive)
+                            or (j.endswith(pos_suffix) and not vertexAxisValueIsPositive)):
+                            badInfluences.append((j, 0.0))
+                    else:
+                        jointAxisValue = cmds.xform(j, query=True, worldSpace=ws, translation=True)[axis]
+                        if ((jointAxisValue > center_threshold and not vertexAxisValueIsPositive)
+                            or (jointAxisValue < -center_threshold and vertexAxisValueIsPositive)):
+                            badInfluences.append((j, 0.0))
+                    
+            cmds.skinPercent(sc, v, tv=badInfluences)       
